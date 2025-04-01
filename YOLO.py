@@ -19,6 +19,14 @@ import torchvision.io as io
 #from torch_snippets import *
 from torchvision import torch_snippets
 
+"""
+#get class names
+model = torch.hub.load('ultralytics/yolov5', 'yolov5s',  pretrained=True)
+results = model(img)
+classes = results.names
+
+"""
+
 # Model
 model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
 
