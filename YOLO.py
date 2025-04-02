@@ -10,14 +10,15 @@
   orcid = {0000-0001-5950-6979}
 }
 """
-
+import pandas as pd
 import torch
 import numpy as np
 import torchvision.io as io
 #import selectivesearch
 #import torch_snippets
 #from torch_snippets import *
-from torchvision import torch_snippets
+#import torch_snippets
+import cv2
 
 """
 #get class names
@@ -27,14 +28,18 @@ classes = results.names
 
 """
 
+import torch
+
 # Model
 model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
 
-# Images
-imgs = ['https://ultralytics.com/images/zidane.jpg']  # batch of images
+# Batch of images
+images = ["Media/Crows.jpg", "Media/Dog Park.jpg",
+          "Media/Petting Zoo.jpg", "Media/Street.jpg",
+          "Media/Cars Movie.png"]
 
 # Inference
-results = model(imgs)
+results = model(images)
 
 # Results
 results.print()
@@ -43,12 +48,17 @@ results.save()  # or .show()
 results.xyxy[0]  # img1 predictions (tensor)
 results.pandas().xyxy[0]  # img1 predictions (pandas)
 
+print(results)
+
 print("Hello World")
-results.print()
-classes = results.names
-print(classes)
+# results.print()
+# classes = results.names
+# print(classes)
 
-im = np.random.rand(100, 100)
-#show(im)
 
-torch_snippets.show(im)
+#torch_snippets.show(im)
+
+#Load Busses dataset
+IMAGE_ROOT = 'archive/images'
+df = pd.read_csv('archive/df.csv')
+print("First 5 records:", df.head())
