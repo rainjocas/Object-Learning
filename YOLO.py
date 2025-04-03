@@ -1,4 +1,8 @@
 """
+CSCI 3485 - Lab 5
+Author: Rain Jocas
+Date: 04/03/2025
+
 @software{yolov5,
   title = {YOLOv5 by Ultralytics},
   author = {Glenn Jocher},
@@ -15,7 +19,6 @@ import pandas as pd
 import torch
 import numpy as np
 import torchvision.io as io
-import cv2
 from os import listdir
 import torch
 
@@ -23,9 +26,10 @@ device = 'mps' if torch.backends.mps.is_available() else 'cpu'
 
 # Model
 model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+model.to(device)
 
 def runYOLOSmBatch():
-  """ Runs YOLO on a small batch of images, saves the newly bounded images"""
+  """ Runs YOLOv5 on a small batch of images, saves the newly bounded images"""
   # Batch of images
   images = ["Media/Crows.jpg", "Media/Dog Park.jpg",
             "Media/Petting Zoo.jpg", "Media/Street.jpg",
@@ -52,7 +56,7 @@ def getConfidences(imgs, results):
   return confidences
 
 def getCoords(img):
-  """ Returns lists of coordinates for all bounding boxes in an image """
+  """ Returns tuple with lists of coordinates for all bounding boxes in an image """
   xMins = img.xmin
   xMaxs = img.xmax
   yMins = img.ymin
@@ -68,7 +72,7 @@ def getCoords(img):
   return predBBcoords
 
 def compute_IoU(df, imgID, predBBcoords, objInd, objCount):
-  """ Computes the IoU of an object """
+  """ Computes and returns the IoU of an object """
   #get true bounding coords for object
   trueXMin = df.loc[df['ImageID'] == imgID].XMin[objCount]
   trueXMax = df.loc[df['ImageID'] == imgID].XMax[objCount]
@@ -139,6 +143,8 @@ def getDetectionAcc(confidences, IoUs):
   return (confAcc, IoUAcc)
 
 def runYOLOBusses():
+  """ Runs YOLOv5 on 20 images from the Busses dataset"""
+
   #Load Busses dataset
   IMAGE_ROOT = 'archive/images'
   df = pd.read_csv('archive/df.csv')
@@ -174,6 +180,5 @@ def runYOLOBusses():
   print("confAcc", confAcc)
   print("IoUAcc", IoUAcc)
 
-
-# runYOLOSmBatch()
+runYOLOSmBatch()
 runYOLOBusses()
