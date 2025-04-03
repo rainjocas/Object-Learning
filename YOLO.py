@@ -40,42 +40,7 @@ def runYOLOSmBatch():
   # Results
   results.print()
 
-#Load Busses dataset
-IMAGE_ROOT = 'archive/images'
-df = pd.read_csv('archive/df.csv')
-print("First 5 records:", df.head())
-
-#grab filenames
-fileNames = os.listdir('archive/images/images')
-
-#convert filenames to file paths
-imgs = []
-
-for fileName in fileNames:
-    filePath = 'archive/images/images/' + fileName
-    imgs.append(filePath)
-    #print(img)
-
-print("Images:", imgs[0:5])
-
-#testing on smaller set because it keeps crashing
-imgs = imgs[0:5]
-
-# Inference
-results = model(imgs)
-# results = model(imgs).to(device)
-
-print("ELEPHANT")
-
-# Results
-results.print()
-
-results.xyxy[0]  # img1 predictions (tensor)
-results.pandas().xyxy[0]  # img1 predictions (pandas)
-
-print(results.pandas().xyxy[0])
-
-def getConfidences():
+def getConfidences(imgs, results):
   """ Returns a list of average confidence for all images """
   confidences = []
   for i in range(len(imgs)):
@@ -86,20 +51,72 @@ def getConfidences():
       confidences.append(avgConfidence)
   return confidences
 
-def getIoUs():
-  """ Returns a list of average confidence for all images """
+def getCoords(img):
+  """ Returns lists of coordinates for all bounding boxes in an image """
+  xMins = img.xmin
+  xMaxs = img.xmax
+  yMins = img.ymin
+  yMaxs = img.ymax
+
+  xMins = xMins.to_list()
+  xMaxs = xMaxs.to_list()
+  yMins = yMins.to_list()
+  yMaxs = yMaxs.to_list()
+
+  predBBcoords = (xMins, xMaxs, yMins, yMaxs)
+  
+  return predBBcoords
+
+def compute_IoU(df, imgID, predBBcoords, objInd, objCount):
+  """ Computes the IoU of an object """
+  #get true bounding coords for object
+  trueXMin = df.loc[df['ImageID'] == imgID].XMin[objCount]
+  trueXMax = df.loc[df['ImageID'] == imgID].XMax[objCount]
+  trueYMin = df.loc[df['ImageID'] == imgID].YMin[objCount]
+  trueYMax = df.loc[df['ImageID'] == imgID].YMax[objCount]
+  
+  #get predicted bounding coords for object
+  predXMin = predBBcoords[0][objInd]
+  predXMax = predBBcoords[1][objInd]
+  predYMin = predBBcoords[2][objInd]
+  predYMax = predBBcoords[3][objInd]
+
+  #intersection
+  interWidth = min(trueXMax, predXMax) - max(trueXMin, predXMin)
+  interHeight = min(trueYMin, predYMin) - max(trueYMax, predYMax)
+  interArea = interWidth * interHeight
+
+
+  trueArea = abs(trueXMin - trueXMax) * abs(trueYMin - trueYMax)
+  predArea = abs(predXMin - predXMax) * abs(predYMin - predYMax)
+  unionArea = trueArea + predArea - interArea
+
+  return interArea/unionArea
+
+def getIoUs(df, results):
+  """ Returns a list of average IoU across objects for all images """
   IoUs = []
-  # for i in range(len(imgs)):
-    #get IoUs for an image
+  objCount = 0
 
+  for i in range(len(results.pandas().xyxy)):
+    img = results.pandas().xyxy[i]
+    predBBcoords = getCoords(img)
+    numObj = predBBcoords[0]
+    avgIoU = []
+    for k in range(len(numObj)):
+      imgID = df.iloc[objCount].ImageID
+      IoU = compute_IoU(df, imgID, predBBcoords, k, objCount)
+      avgIoU.append(IoU)
+      objCount += 1
+    avgIoU = np.mean(avgIoU)
+    IoUs.append(avgIoU)
 
-      #IoUs.append(avgConfidence)
   return IoUs
 
 def getDetectionAcc(confidences, IoUs):
   """ Calculates and returns the detection accuracy for cofidence levels and IoU """
-  confThreshold = 0.8
-  IoUThreshold = 0.8
+  confThreshold = 0.5
+  IoUThreshold = 0.5
 
   #get number of images that pass the confidence threshold
   totPassedConf = 0
@@ -121,15 +138,42 @@ def getDetectionAcc(confidences, IoUs):
 
   return (confAcc, IoUAcc)
 
-confidences = getConfidences()
-IoUs = getIoUs()
+def runYOLOBusses():
+  #Load Busses dataset
+  IMAGE_ROOT = 'archive/images'
+  df = pd.read_csv('archive/df.csv')
 
-confAcc, IoUAcc = getDetectionAcc(confidences, IoUs)
+  #grab first 20 filenames
+  fileNames = os.listdir('archive/images/images')
+  fileNames = fileNames[0:20]
+
+  #convert filenames to file paths
+  imgs = []
+
+  for fileName in fileNames:
+    filePath = 'archive/images/images/' + fileName
+    imgs.append(filePath)
+
+  # Inference
+  results = model(imgs)
+
+  # Results
+  results.print()
+
+  # Save image results with bounding boxes and classes
+  results.save()
+    
+  #read csv into dataframe
+  df = pd.read_csv("archive/df.csv")
+
+  confidences = getConfidences(imgs, results)
+  IoUs = getIoUs(df, results)
+
+  confAcc, IoUAcc = getDetectionAcc(confidences, IoUs)
+
+  print("confAcc", confAcc)
+  print("IoUAcc", IoUAcc)
 
 
-"""
-You can establish a threshold value for confidence level and another for IoU that
-considers the detection successful or failed. Then compute the detection accuracy
-based on that. In order to compute the IoU between two bounding boxes, write a
-function compute_IoU that does that.
-"""
+# runYOLOSmBatch()
+runYOLOBusses()
